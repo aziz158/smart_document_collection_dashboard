@@ -14,6 +14,7 @@ export interface UploadedDocument {
   categorizationStatus: CategorizationStatus
   category: DocCategory | null
   confidence: number | null
+  manuallySet?: boolean
 }
 
 export interface ChecklistItem {

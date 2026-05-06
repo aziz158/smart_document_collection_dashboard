@@ -6,6 +6,7 @@ interface DocumentStore {
   documents: UploadedDocument[]
   addDocuments: (files: File[]) => void
   removeDocument: (id: string) => void
+  updateDocumentCategory: (id: string, category: DocCategory) => void
 
   reminder: ReminderState
   setReminderEnabled: (enabled: boolean) => void
@@ -74,6 +75,16 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
 
   removeDocument: (id: string) => {
     set((state) => ({ documents: state.documents.filter((d) => d.id !== id) }))
+  },
+
+  updateDocumentCategory: (id: string, category: DocCategory) => {
+    set((state) => ({
+      documents: state.documents.map((d) =>
+        d.id === id
+          ? { ...d, category, categorizationStatus: 'done', manuallySet: true }
+          : d,
+      ),
+    }))
   },
 
   reminder: {

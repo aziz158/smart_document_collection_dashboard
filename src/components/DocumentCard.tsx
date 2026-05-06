@@ -1,7 +1,9 @@
 import clsx from 'clsx'
 import { useDocumentStore } from '../store/documentStore'
-import { CATEGORY_COLORS } from '../constants/documentTypes'
-import type { UploadedDocument } from '../types'
+import { CATEGORY_COLORS, REQUIRED_DOC_TYPES } from '../constants/documentTypes'
+import type { DocCategory, UploadedDocument } from '../types'
+
+const ALL_CATEGORIES: DocCategory[] = [...REQUIRED_DOC_TYPES, 'Unknown']
 
 interface Props {
   doc: UploadedDocument
@@ -19,9 +21,11 @@ function SkeletonBar({ width }: { width: string }) {
 
 export default function DocumentCard({ doc }: Props) {
   const removeDocument = useDocumentStore((s) => s.removeDocument)
+  const updateDocumentCategory = useDocumentStore((s) => s.updateDocumentCategory)
   const isProcessing = doc.categorizationStatus === 'processing' || doc.categorizationStatus === 'pending'
   const isFailed = doc.categorizationStatus === 'failed'
   const colors = doc.category ? CATEGORY_COLORS[doc.category] : CATEGORY_COLORS['Unknown']
+  const showCategorySelector = doc.categorizationStatus === 'done' || isFailed
 
   const isImage = doc.fileType.startsWith('image/')
   const confidence = doc.confidence ?? 0
@@ -68,41 +72,62 @@ export default function DocumentCard({ doc }: Props) {
           </div>
         )}
 
-        {isFailed && (
+        {isFailed && !doc.category && (
           <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
-            Categorization failed
+            Could not auto-detect
           </span>
         )}
 
         {doc.categorizationStatus === 'done' && doc.category && (
-          <>
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className={clsx(
               'inline-block text-xs font-medium rounded-full px-2 py-0.5 border',
               colors.bg, colors.text, colors.border,
             )}>
               {doc.category}
             </span>
+            {doc.manuallySet && (
+              <span className="text-xs text-gray-400 italic">edited</span>
+            )}
+          </div>
+        )}
 
-            {/* Confidence bar */}
-            <div>
-              <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span>Confidence</span>
-                <span>{Math.round(confidence * 100)}%</span>
-              </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={clsx(
-                    'h-full rounded-full transition-all duration-500',
-                    confidence >= 0.7 ? 'bg-green-400' : 'bg-amber-400',
-                  )}
-                  style={{ width: `${confidence * 100}%` }}
-                />
-              </div>
+        {/* Confidence bar — only shown when AI set the category */}
+        {doc.categorizationStatus === 'done' && doc.category && !doc.manuallySet && (
+          <div>
+            <div className="flex justify-between text-xs text-gray-400 mb-1">
+              <span>Confidence</span>
+              <span>{Math.round(confidence * 100)}%</span>
             </div>
-          </>
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={clsx(
+                  'h-full rounded-full transition-all duration-500',
+                  confidence >= 0.7 ? 'bg-green-400' : 'bg-amber-400',
+                )}
+                style={{ width: `${confidence * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Category selector — visible after processing or on failure */}
+        {showCategorySelector && (
+          <div className="pt-0.5">
+            <label className="text-xs text-gray-400 mb-1 block">Change type</label>
+            <select
+              value={doc.category ?? 'Unknown'}
+              onChange={(e) => updateDocumentCategory(doc.id, e.target.value as DocCategory)}
+              className="w-full text-xs text-gray-600 border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300 cursor-pointer"
+            >
+              {ALL_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
         )}
       </div>
     </div>
